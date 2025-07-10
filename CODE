@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía Interactiva: Río Fungi – Kit Vivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Río Fungi Brand Palette -->
+    <!-- Application Structure Plan: The SPA is structured using a task-oriented, tab-based navigation system (Inicio, Preparación, Cuidados, Cosecha, Próximos Pasos). This architecture was chosen over a linear scroll to allow users to quickly access information relevant to their current stage in the cultivation journey. For instance, a user facing a growth issue can directly navigate to the 'Cuidados' tab for troubleshooting without needing to scroll through setup instructions. This non-linear, user-centric design improves usability and makes the guide a practical tool rather than just a static document. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Ideal growing conditions -> Goal: Inform/Compare -> Viz: Radar Chart (Chart.js) -> Interaction: None -> Justification: Provides a clear visual snapshot of the optimal balance between the four key environmental factors, more intuitive than a table.
+        - Report Info: Mushroom growth timeline -> Goal: Change -> Viz: Line Chart (Chart.js) -> Interaction: None -> Justification: Effectively visualizes the concept of exponential growth ("doubling in size daily"), making the process more tangible.
+        - Report Info: Troubleshooting common issues -> Goal: Organize/Inform -> Viz: Dynamic Text Block -> Interaction: User selects a problem from a dropdown, and the corresponding solution appears. -> Justification: An interactive alternative to a static table, preventing information overload and providing immediate, targeted answers.
+        - Report Info: Harvest timing -> Goal: Inform/Compare -> Viz: Doughnut Chart (Chart.js) -> Interaction: None -> Justification: Clearly segments the harvest window into "Too Early," "Perfect," and "Too Late," offering a quick visual guide.
+        - Report Info: Composting benefits -> Goal: Compare -> Viz: Bar Chart (Chart.js) -> Interaction: None -> Justification: Quantifies the abstract benefits of using the spent substrate, reinforcing the kit's sustainability value.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: #F8F5F2; /* Base Background - Light Neutral */
+            color: #362E25; /* Main Text - Dark Brown */
+        }
+        h1, h2, h3, .font-poppins { /* Using Playfair Display for headings */
+            font-family: 'Playfair Display', serif;
+        }
+        .nav-tab {
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            color: #362E25; /* Dark Brown for inactive tabs */
+        }
+        .nav-tab.active {
+            border-bottom-color: #FFA500; /* Vibrant Orange Accent */
+            color: #362E25; /* Dark Brown for active text */
+            font-weight: 600;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 300px;
+            margin: 2rem auto;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+                max-height: 400px;
+            }
+        }
+        .checklist-item input:checked + label {
+            text-decoration: line-through;
+            color: #D4AC87; /* Muted Orange/Brown for checked items */
+        }
+        .llm-response-box {
+            background-color: #F8F5F2;
+            border-left: 4px solid #FFA500;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.95rem;
+            color: #362E25;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #FFA500;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
+
+        <header class="text-center my-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#FFA500]">Guía Interactiva: Río Fungi</h1>
+            <p class="text-lg mt-2 text-[#362E25]">Tu aventura para cultivar vida en casa.</p>
+        </header>
+
+        <nav class="sticky top-0 bg-[#F8F5F2]/80 backdrop-blur-md z-10 mb-8 border-b border-gray-200">
+            <div id="nav-tabs-container" class="flex items-center justify-center space-x-2 sm:space-x-4 md:space-x-8 text-sm sm:text-base font-medium text-center overflow-x-auto py-3">
+                <button class="nav-tab active px-4 py-2" data-tab="inicio">🌱 Inicio</button>
+                <button class="nav-tab px-4 py-2" data-tab="preparacion">🛠️ Preparación</button>
+                <button class="nav-tab px-4 py-2" data-tab="cuidados">💧 Cuidados</button>
+                <button class="nav-tab px-4 py-2" data-tab="cosecha">🍄 Cosecha</button>
+                <button class="nav-tab px-4 py-2" data-tab="proximos-pasos">♻️ Próximos Pasos</button>
+            </div>
+        </nav>
+
+        <main id="tab-content">
+            <!-- INICIO TAB -->
+            <div id="tab-inicio" class="p-4 bg-white rounded-2xl shadow-sm">
+                <h2 class="text-3xl font-bold text-[#362E25] mb-4">Bienvenid@ a tu Aventura con el Micelio Vivo</h2>
+                <p class="mb-4">Estás a punto de cultivar vida, desde residuos hasta deliciosos hongos gourmet.</p>
+                <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">✨ Un Cultivo, Muchas Conexiones</h3>
+                <p class="mb-4">Con este kit estás invitad@ a vivir algo más que un cultivo. Estás sembrando un momento de pausa y conexión con lo natural.</p>
+                <p class="mb-6">Ya sea en tu cocina, escritorio o balcón, este pequeño ecosistema transformará tu espacio y tu rutina.</p>
+                <div class="w-full max-w-md mx-auto my-6">
+                    <img src="https://i.postimg.cc/VLqsP1DP/Chat-GPT-Image-10-jul-2025-03-15-11-a-m.png" alt="Un Cultivo, Muchas Conexiones" class="rounded-lg shadow-md w-full h-auto" onerror="this.onerror=null;this.src='https://placehold.co/600x400/F8F5F2/362E25?text=Error%20al%20cargar%20imagen';">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">🍄 ¿Qué Trae tu Kit Vivo?</h3>
+                        <p class="mb-4">Todo lo necesario para cultivar con éxito, sin complicaciones:</p>
+                        <ul class="space-y-3">
+                            <li class="flex items-center"><span class="text-2xl mr-3">🧴</span> 1 Bolsa de sustrato colonizado</li>
+                            <li class="flex items-center"><span class="text-2xl mr-3">🌫️</span> Rociador manual</li>
+                            <li class="flex items-center"><span class="text-2xl mr-3">📘</span> Guía de cultivo (esta misma)</li>
+                        </ul>
+                    </div>
+                    <div class="bg-[#F8F5F2] p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold text-center text-[#D4AC87] mb-3">🧬 Ficha de Vida del Kit</h3>
+                        <div class="space-y-2 text-sm">
+                            <p><strong>🌿 Variedad:</strong> Pleurotus ostreatus (ostra gris)</p>
+                            <p><strong>🧫 Etapa:</strong> Micelio colonizado (listo para fructificar)</p>
+                            <p><strong>⏳ Tiempo estimado de cosecha:</strong> 7 a 14 días</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 text-center p-4 bg-[#F8F5F2] rounded-lg border border-[#D4AC87]">
+                    <p class="text-xl font-semibold text-[#362E25]">🚀 ¿List@ para brotar vida en casa?</p>
+                    <p class="text-sm mt-2 text-[#362E25]">Deslicemos hacia la preparación para que tu hongo comience a despertar.</p>
+                    <p class="text-sm mt-2 text-[#362E25]">🔽 Haz clic en la pestaña "Preparación" para comenzar tu viaje micelial.</p>
+                </div>
+            </div>
+
+            <!-- PREPARACION TAB -->
+            <div id="tab-preparacion" class="hidden p-4 bg-white rounded-2xl shadow-sm">
+                 <h2 class="text-3xl font-bold text-[#362E25] mb-4">Preparando el Terreno</h2>
+                 <p class="mb-6">El éxito de tu cultivo empieza por crear el hogar perfecto y activar tu kit correctamente. Sigue estos pasos para un comienzo ideal.</p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">El Entorno Ideal</h3>
+                        <p class="mb-4">Busca un rincón tranquilo con luz indirecta, sin corrientes de aire fuertes, y donde puedas mantener una temperatura y humedad estables. Piensa en el mostrador de tu cocina o una estantería.</p>
+                        <div class="w-full max-w-md mx-auto mt-6">
+                            <img src="https://i.postimg.cc/QxPjGCrt/Chat-GPT-Image-10-jul-2025-03-03-57-a-m.png" alt="Entorno Ideal" class="rounded-lg shadow-md w-full h-auto" onerror="this.onerror=null;this.src='https://placehold.co/600x400/F8F5F2/362E25?text=Error%20al%20cargar%20imagen';">
+                        </div>
+                    </div>
+                     <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">Checklist de Activación</h3>
+                        <p class="mb-4">¡Es hora de despertar la vida! Realiza este ritual inicial y marca cada paso.</p>
+                        <div class="space-y-3 text-lg">
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check1" class="mr-2 h-4 w-4">
+                                <label for="check1">1. Ubica tu kit en el lugar perfecto. Busca un rincón con luz suave, buena humedad y sin corrientes fuertes de aire. Elige un espacio donde puedas observarlo cada día.</label>
+                            </div>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check2" class="mr-2 h-4 w-4">
+                                <label for="check2">2. Corta la bolsa frontal en forma de triángulo invertido. Haz una incisión limpia de unos 6 cm en la zona indicada. Por ahí emergerán tus hongos. ¡Es su portal al mundo! ✂️🍄</label>
+                            </div>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check3" class="mr-2 h-4 w-4">
+                                <label for="check3">3. Rocía el interior 2–3 veces al día. Usa el rociador incluido. Mantén la superficie húmeda, pero sin que gotee.</label>
+                            </div>
+                            <div class="checklist-item">
+                                <input type="checkbox" id="check4" class="mr-2 h-4 w-4">
+                                <label for="check4">4. Registra la fecha de activación. Esto te ayudará a seguir el ritmo de tu cultivo y anticipar la cosecha 🗓️</label>
+                            </div>
+                        </div>
+                     </div>
+                 </div>
+            </div>
+
+            <!-- CUIDADOS TAB -->
+            <div id="tab-cuidados" class="hidden p-4 bg-white rounded-2xl shadow-sm">
+                <h2 class="text-3xl font-bold text-[#362E25] mb-4">Cuidados Diarios y Crecimiento</h2>
+                <p class="mb-6">Una vez activado, tu kit necesita constancia y cariño. Observarás un crecimiento asombroso, ¡a veces duplicando su tamaño cada día!</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">Rutina de Cuidado</h3>
+                        <ul class="list-disc list-inside space-y-2 mb-6">
+                            <li><strong>Rocía 2 veces al día (mañana y tarde).</strong> Si hay mucha humedad ambiente (cerca de 80%), una vez puede ser suficiente.</li>
+                            <li><strong>Observa las gotas pequeñas en el corte:</strong> Es señal de buena humedad.</li>
+                            <li><strong>Si ves condensación excesiva, o agua estancada bajo el corte, no vuelvas a regar hasta que se seque.</strong></li>
+                            <li><strong>Evita corrientes fuertes</strong> (del aire acondicionado, ventana, ventilador), luz directa solar o tocar los hongos en crecimiento.</li>
+                        </ul>
+                        <p class="italic font-semibold mb-6">“Los hongos crecen en silencio, pero te hablarán a través de su forma y color. Obsérvalos con atención: ese es el verdadero cuidado.”</p>
+                        
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">✨ Asistente de Problemas con IA</h3>
+                        <p class="mb-2">Describe tu problema y la IA te ofrecerá una posible solución.</p>
+                        <textarea id="problemInput" class="w-full p-2 border border-gray-300 rounded-md focus:border-[#FFA500] focus:ring-[#FFA500]" rows="3" placeholder="Ej: Mis hongos tienen manchas verdes y huelen raro."></textarea>
+                        <button id="solveProblemBtn" class="mt-3 w-full bg-[#FFA500] text-white py-2 px-4 rounded-md hover:bg-orange-600 transition-colors font-bold">
+                            Diagnosticar Problema
+                        </button>
+                        <div id="problemResponse" class="llm-response-box hidden"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold text-center text-[#D4AC87] mb-4">Curva de Crecimiento Esperada</h3>
+                        <div class="w-full max-w-md mx-auto">
+                            <img src="https://i.postimg.cc/L47ScGm3/Chat-GPT-Image-10-jul-2025-02-17-25-a-m.png" alt="Curva de Crecimiento Esperada" class="rounded-lg shadow-md w-full h-auto" onerror="this.onerror=null;this.src='https://placehold.co/600x400/F8F5F2/362E25?text=Imagen%20no%20cargada%20(enlace%20directo%20fallido)';">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- COSECHA TAB -->
+            <div id="tab-cosecha" class="hidden p-4 bg-white rounded-2xl shadow-sm">
+                <h2 class="text-3xl font-bold text-[#362E25] mb-4">� ¡Llegó el Momento de la Cosecha!</h2>
+                <p class="mb-6">El clímax de tu cultivo 🌟 Saber cuándo y cómo cosechar te asegura el mejor sabor… y nuevas oleadas 🍄</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">¿Cuándo Cosechar?</h3>
+                        <p class="mb-4">La señal clave está en la forma del sombrero:</p>
+                        <ul class="list-disc list-inside space-y-2 mb-4">
+                            <li>🟡 Cosecha cuando los sombreros estén casi planos, con los bordes aún ligeramente curvados hacia abajo.</li>
+                            <li>🚫 Si los bordes ya se levantan hacia arriba (parecen paraguas invertidos), ¡te pasaste un poco! No es grave, pero los hongos pueden liberar esporas y ponerse más fibrosos.</li>
+                        </ul>
+                        <div class="w-full max-w-md mx-auto mt-6">
+                            <img src="https://i.postimg.cc/JhsZqPWn/Chat-GPT-Image-10-jul-2025-03-28-38-a-m.png" alt="Momento de Cosecha" class="rounded-lg shadow-md w-full h-auto" onerror="this.onerror=null;this.src='https://placehold.co/600x400/F8F5F2/362E25?text=Error%20al%20cargar%20imagen';">
+                        </div>
+                     </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">El Método Correcto</h3>
+                        <ol class="list-decimal list-inside space-y-3">
+                            <li>Toma el racimo completo por la base con tu mano limpia.</li>
+                            <li>Gira suavemente y tira con firmeza controlada hasta que se desprenda.</li>
+                            <li>Si no se suelta, puedes ayudarte con un cuchillo limpio y sin dañar el micelio.</li>
+                            <li>Limpia la superficie del sustrato retirando cualquier resto visible.</li>
+                        </ol>
+                        <div class="w-full max-w-md mx-auto mt-6">
+                            <img src="https://i.postimg.cc/4dftTmbq/Chat-GPT-Image-10-jul-2025-02-30-42-a-m.png" alt="Método de Cosecha Correcto" class="rounded-lg shadow-md w-full h-auto" onerror="this.onerror=null;this.src='https://placehold.co/600x400/F8F5F2/362E25?text=Imagen%20no%20cargada%20(enlace%20directo%20fallido)';">
+                        </div>
+                        <p class="italic font-semibold mt-6">🧡 “Cosecha como si recogieras una flor sin romper la raíz.”</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROXIMOS PASOS TAB -->
+            <div id="tab-proximos-pasos" class="hidden p-4 bg-white rounded-2xl shadow-sm">
+                <h2 class="text-3xl font-bold text-[#362E25] mb-4">🌱 El Círculo de la Vida Continúa</h2>
+                <p class="mb-6">Tu kit puede darte más de una cosecha. Y cuando todo termina, nada se desperdicia: el sustrato se transforma en abono. Así se completa un verdadero ciclo de vida 🌎♻️</p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">🍄 Segundas y Terceras Oleadas</h3>
+                        <p class="mb-4">Después de tu primera cosecha el micelio aún tiene energía para dar más:</p>
+                        <ul class="list-disc list-inside space-y-2 mb-4">
+                            <li>Pega una cinta adhesiva transparente al corte para cerrarlo.</li>
+                            <li>Deja reposar el bloque entre 7 y 14 días idealmente a 22-25° y en oscuridad.</li>
+                            <li>Luego quita la cinta, sumérgelo en agua fría durante 6 horas para rehidratarlo (solo la zona del corte necesita rehidratar).</li>
+                            <li>Vuelve a tu rutina de cuidados y observa: en pocos días podrían aparecer nuevos brotes.</li>
+                        </ul>
+                        <p class="italic font-semibold mt-6">Cada bloque es un bosque con más de una sorpresa.</p>
+
+                        <div class="mt-8">
+                            <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">✨ Recetas y Sostenibilidad con IA</h3>
+                            <button id="generateRecipeBtn" class="mt-3 w-full bg-[#FFA500] text-white py-2 px-4 rounded-md hover:bg-orange-600 transition-colors font-bold">
+                                Generar Receta de Hongos Ostra
+                            </button>
+                            <div id="recipeResponse" class="llm-response-box hidden"></div>
+
+                            <button id="generateSustainabilityTipBtn" class="mt-3 w-full bg-[#D4AC87] text-white py-2 px-4 rounded-md hover:bg-orange-400 transition-colors font-bold">
+                                Obtener Consejo de Sostenibilidad
+                            </button>
+                            <div id="sustainabilityTipResponse" class="llm-response-box hidden"></div>
+                        </div>
+                    </div>
+                     <div>
+                        <h3 class="text-2xl font-semibold text-[#D4AC87] mb-4">🌻 Beneficios del Compostaje</h3>
+                        <p class="mb-4">El sustrato usado está lleno de vida y nutrientes:</p>
+                        <ul class="list-disc list-inside space-y-2 mb-4">
+                            <li>Mejora la estructura del suelo</li>
+                            <li>Aumenta la retención de humedad</li>
+                            <li>Aporta hongos y bacterias beneficiosas</li>
+                            <li>Enriquece tu huerto o plantas de interior</li>
+                        </ul>
+                     </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabs = document.querySelectorAll('.nav-tab');
+            const tabContents = document.querySelectorAll('#tab-content > div');
+            const navContainer = document.getElementById('nav-tabs-container');
+
+            navContainer.addEventListener('click', (e) => {
+                if (e.target.matches('.nav-tab')) {
+                    const tabId = e.target.dataset.tab;
+
+                    tabs.forEach(tab => {
+                        tab.classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        if (content.id === `tab-${tabId}`) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                }
+            });
+
+            // --- Gemini API Integration ---
+
+            // Function to call Gemini API
+            async function callGeminiAPI(prompt, outputElementId) {
+                const outputElement = document.getElementById(outputElementId);
+                const loadingSpinner = document.createElement('span');
+                loadingSpinner.className = 'loading-spinner';
+                outputElement.innerHTML = 'Generando respuesta...';
+                outputElement.appendChild(loadingSpinner);
+                outputElement.classList.remove('hidden');
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; // Canvas will automatically provide the API key
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        outputElement.innerHTML = text;
+                    } else {
+                        outputElement.innerHTML = 'Error: No se pudo obtener una respuesta de la IA.';
+                        console.error('Unexpected API response structure:', result);
+                    }
+                } catch (error) {
+                    outputElement.innerHTML = 'Error al conectar con la IA. Inténtalo de nuevo más tarde.';
+                    console.error('Error calling Gemini API:', error);
+                }
+            }
+
+            // Event listener for Recipe Generator
+            document.getElementById('generateRecipeBtn').addEventListener('click', () => {
+                const prompt = "Genera una receta deliciosa y sencilla para cocinar hongos ostra. Incluye ingredientes y pasos detallados. La receta debe ser para 2 personas.";
+                callGeminiAPI(prompt, 'recipeResponse');
+            });
+
+            // Event listener for Troubleshooting Assistant
+            document.getElementById('solveProblemBtn').addEventListener('click', () => {
+                const problem = document.getElementById('problemInput').value;
+                if (problem.trim() === "") {
+                    const problemResponse = document.getElementById('problemResponse');
+                    problemResponse.innerHTML = 'Por favor, describe tu problema para que la IA pueda ayudarte.';
+                    problemResponse.classList.remove('hidden');
+                    return;
+                }
+                const prompt = `Tengo un problema con mi kit de cultivo de hongos ostra. El problema es: "${problem}". ¿Qué podría estar pasando y cómo puedo solucionarlo? Sé conciso y práctico.`;
+                callGeminiAPI(prompt, 'problemResponse');
+            });
+
+            // Event listener for Sustainability Tip Generator
+            document.getElementById('generateSustainabilityTipBtn').addEventListener('click', () => {
+                const prompt = "Dame un consejo de sostenibilidad relacionado con el cultivo de hongos o la vida eco-amigable. El consejo debe ser inspirador y fácil de aplicar.";
+                callGeminiAPI(prompt, 'sustainabilityTipResponse');
+            });
+
+
+            // --- Chart.js Configurations ---
+            const defaultChartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: { family: "'Lato', sans-serif" },
+                            color: '#362E25' /* Dark Brown for legend text */
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const item = tooltipItems[0];
+                                let label = item.chart.data.labels[item.dataIndex];
+                                return Array.isArray(label) ? label.join(' ') : label;
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        font: { family: "'Playfair Display', serif", size: 16, weight: 'bold' },
+                        color: '#362E25' /* Dark Brown for chart titles */
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#362E25' }, /* Dark Brown for x-axis ticks */
+                        grid: { color: '#E0E0E0' } /* Light grey grid lines */
+                    },
+                    y: {
+                        ticks: { color: '#362E25' }, /* Dark Brown for y-axis ticks */
+                        grid: { color: '#E0E0E0' } /* Light grey grid lines */
+                    },
+                    r: { /* For Radar chart */
+                        pointLabels: {
+                            font: { size: 12, family: "'Lato', sans-serif" },
+                            color: '#362E25' /* Dark Brown for radar point labels */
+                        },
+                        ticks: {
+                            color: '#362E25', /* Dark Brown for radar ticks */
+                            backdropColor: 'transparent' /* Transparent background for ticks */
+                        },
+                        grid: {
+                            color: '#E0E0E0' /* Light grey grid lines */
+                        },
+                        angleLines: {
+                            color: '#E0E0E0' /* Light grey angle lines */
+                        }
+                    }
+                }
+            };
+            
+            // Removed Harvest Chart (Doughnut) as it's no longer needed
+            // const harvestCtx = document.getElementById('harvestChart').getContext('2d');
+            // new Chart(harvestCtx, {
+            //     type: 'doughnut',
+            //     data: {
+            //         labels: ['Muy Pronto', 'Ventana Perfecta', 'Demasiado Tarde'],
+            //         datasets: [{
+            //             label: 'Momento de Cosecha',
+            //             data: [25, 50, 25],
+            //             backgroundColor: ['#D4AC87', '#FFA500', '#A9A9A9'], /* Muted Orange/Brown, Vibrant Orange, Grey */
+            //             hoverOffset: 4
+            //         }]
+            //     },
+            //     options: { ...defaultChartOptions, cutout: '60%' }
+            // });
+
+            // Removed Compost Chart (Bar) as it's no longer needed
+            // const compostCtx = document.getElementById('compostChart').getContext('2d');
+            // new Chart(compostCtx, {
+            //     type: 'bar',
+            //     data: {
+            //         labels: ['Retención de Agua', 'Aporte Nutrientes', 'Actividad Microbiana'],
+            //         datasets: [{
+            //             label: 'Mejora Estimada (%)',
+            //             data: [75, 60, 80],
+            //             backgroundColor: ['#FFA500', '#D4AC87', '#362E25'], /* Vibrant Orange, Muted Orange/Brown, Dark Brown */
+            //         }]
+            //     },
+            //     options: { ...defaultChartOptions, scales: { y: { beginAtZero: true, max: 100 } } }
+            // });
+        });
+    </script>
+</body>
+</html>
+�
